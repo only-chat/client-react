@@ -1,0 +1,34 @@
+:root {
+    --color-shared-primary: #616161;
+    --color-shared-secondary: #BDBDBD;
+    --color-background-body: #F5F5F5;
+    --color-shared-field-text: #212121;
+
+    --color-actions-gray: #BDBDBD;
+    --color-actions-hover: #424242;
+    --color-label-gray: #BDBDBD;
+    --color-label-focus: #1976D2;
+
+    --color-error: #FFCCBC;
+    --color-info: #BBDEFB;
+
+    --background-field: #FFFFFF;
+    --background-card: #FFFFFF;
+    --background-button: #FFFFFF;
+    --background-button-active: #EEEEEE;
+    --background-checkbox-checked: #1976D2;
+    --background-item-hover: #EEEEEE;
+    --background-select-years: #F5F5F5;
+
+    --border-inactive: 1px solid #EFF0F5;
+    --border-focus: 1px solid #1976D2;
+    --border-hover: 1px solid #424242;
+    --border-radius-small: 4px;
+}
+
+body {
+    padding: 0 100px;
+    margin: 0;
+    color: var(--color-shared-primary);
+    background-color: var(--color-background-body);
+}

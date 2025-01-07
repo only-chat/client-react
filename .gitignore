@@ -1,0 +1,11 @@
+# Node.js
+node_modules/
+
+# Environment variables
+.env
+.env.test
+
+# Build directories
+build/
+
+package-lock.json
