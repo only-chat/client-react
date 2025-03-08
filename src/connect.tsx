@@ -9,7 +9,7 @@ interface CloseProps {
 }
 
 export const Connect = (props: ConnectProps) => {
-    const [host, setHost] = useState('http://localhost:9000')
+    const [host, setHost] = useState('http://github.vyatkin.com/only-chat/ws')
 
     const handleClickConnect = (e: React.MouseEvent) => {
         props.connect(host)
