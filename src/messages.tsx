@@ -331,9 +331,7 @@ export const Messages = (props: MessagesProps) => {
         props.send(type, data)
     }, [props.send])
 
-    const { closedAt, messages, total, participants } = conversation
-
-    const participantsText = participants?.join(', ')
+    const { closedAt, messages, total } = conversation
 
     return <>
         <h1>Conversation</h1>
@@ -352,7 +350,7 @@ export const Messages = (props: MessagesProps) => {
                     <div>CreatedAt: {m.createdAt.toLocaleString()}</div>
                     {!!m.updatedAt && <div style={{ color: 'green' }}>UpdatedAt: {m.updatedAt.toLocaleString()}</div>}
                     {!!m.deletedAt && <div style={{ color: 'red' }}>DeletedAt: {m.deletedAt.toLocaleString()}</div>}
-                    <div>Participants: {participantsText}</div>
+                    <div>Participants: {m.participants.join(', ')}</div>
                     {!m.deletedAt && m.fromId === user.name && <>
                         <button data-id={m.id} disabled={updating.has(m.id)} onClick={handleClickMessageDelete}>Delete</button>
                         <input type='checkbox' id={'update-' + m.id} data-id={m.id} checked={update.has(m.id)} disabled={updating.has(m.id)} onChange={handleChangeUpdate} />
