@@ -9,10 +9,12 @@ interface CloseProps {
 }
 
 export const Connect = (props: ConnectProps) => {
-    const [host, setHost] = useState('http://github.vyatkin.com/only-chat/ws')
+    const [host, setHost] = useState(process.env.WS_HOST)
 
     const handleClickConnect = (e: React.MouseEvent) => {
-        props.connect(host)
+        if (host) {
+            props.connect(host)
+        }
     }
 
     const handleHostChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -9,6 +9,9 @@ const result = await esbuild.build({
   outfile: 'build/index.js',
   sourcemap: true,
   metafile: true,
+  define: {
+    'process.env.WS_HOST': '"http://github.vyatkin.com/only-chat/ws"',
+  }
 })
 
 await copyFile('src/index.html', 'build/index.html')

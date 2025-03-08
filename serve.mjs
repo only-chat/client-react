@@ -7,6 +7,9 @@ let ctx = await esbuild.context({
   bundle: true,
   outdir: 'build',
   sourcemap: true,
+  define: {
+    'process.env.WS_HOST': '"http://github.vyatkin.com/only-chat/ws"',
+  }
 })
 
 let { host, port } = await ctx.serve({
