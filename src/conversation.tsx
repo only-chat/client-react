@@ -25,14 +25,14 @@ export interface ConversationData extends Conversation {
 }
 
 export const createConversation = (response: any) => ({
-    id: response.id,
-    title: response.title,
-    participants: response.participants,
-    createdBy: response.createdBy,
-    createdAt: new Date(response.createdAt),
-    updatedAt: response.updatedAt ? new Date(response.updatedAt) : undefined,
-    closedAt: response.closedAt ? new Date(response.closedAt) : undefined,
-    deletedAt: response.deletedAt ? new Date(response.deletedAt) : undefined,
+    id: response.conversation.id,
+    title: response.conversation.title,
+    participants: response.conversation.participants,
+    createdBy: response.conversation.createdBy,
+    createdAt: new Date(response.conversation.createdAt),
+    updatedAt: response.conversation.updatedAt ? new Date(response.conversation.updatedAt) : undefined,
+    closedAt: response.conversation.closedAt ? new Date(response.conversation.closedAt) : undefined,
+    deletedAt: response.conversation.deletedAt ? new Date(response.conversation.deletedAt) : undefined,
     latestMessage: response.latestMessage ? createMessage(response.latestMessage) : undefined,
     leftAt: response.leftAt ? new Date(response.leftAt) : undefined,
     connected: response.connected,
