@@ -11,6 +11,7 @@ interface CloseProps {
 export const Connect = (props: ConnectProps) => {
     const [host, setHost] = useState(process.env.WS_HOST)
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleClickConnect = (e: React.MouseEvent) => {
         if (host) {
             props.connect(host)
@@ -33,6 +34,7 @@ export const Connect = (props: ConnectProps) => {
 }
 
 export const Close = (props: CloseProps) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleClickClose = (e: React.MouseEvent) => {
         props.close()
     }

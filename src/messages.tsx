@@ -1,13 +1,23 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react'
 import ConversationInfo, { type ConversationData } from './conversation'
-import MessageHandlersContext from './messageHandlersContext'
+import MessageHandlersContext, {type Action} from './messageHandlersContext'
 import TextMessageEditor from './textMessageEditor'
 import UserContext from './userContext'
+import { createMessage } from './responses'
 
-export interface ConversationUpdate {
-    title?: string
-    participants?: string[]
-}
+import type {
+    ConversationClosedResponse,
+    ConversationDeletedResponse,
+    ConversationUpdatedResponse,
+    FileMessageResponse,
+    JoinedResponse,
+    LeftResponse,
+    LoadedMessagesResponse,
+    Message,
+    MessageDeletedResponse,
+    MessageUpdatedResponse,
+    TextMessageResponse,
+} from './responses'
 
 export interface FileMessage {
     link: string
@@ -20,65 +30,9 @@ export interface TextMessage {
     text: string
 }
 
-export interface MessageDelete {
-    messageId: string
-}
-
-export interface MessageUpdate extends Partial<FileMessage>, Partial<TextMessage> {
-    messageId: string
-}
-
 export type MessageType = 'text' | 'file'
 
-interface FindRequest {
-    from?: number
-    size?: number
-    sort?: string
-    sortDesc?: boolean
-    ids?: string[]
-    clientMessageIds?: string[]
-    excludeIds?: string[]
-    conversationIds?: string[]
-    fromIds?: string[]
-    types?: MessageType[]
-    createdFrom?: Date
-    createdTo?: Date
-    text?: string
-}
-export interface LoadRequest {
-    from?: number
-    size?: number
-    excludeIds?: string[]
-    before?: Date
-}
-
-export type MessageData = ConversationUpdate | FileMessage | FindRequest | LoadRequest | MessageDelete | MessageUpdate | TextMessage | null
-export interface Message {
-    id?: string
-    clientMessageId?: string
-    conversationId: string
-    participants: string[]
-    connectionId: string
-    fromId: string
-    type: MessageType
-    data: MessageData
-    createdAt: Date
-    updatedAt?: Date
-    deletedAt?: Date
-}
-
-export const createMessage = (response: any) => ({
-    id: response.id,
-    conversationId: response.conversationId,
-    participants: response.participants,
-    connectionId: response.connectionId,
-    fromId: response.fromId,
-    type: response.type,
-    data: response.data,
-    createdAt: new Date(response.createdAt),
-    updatedAt: response.updatedAt ? new Date(response.updatedAt) : undefined,
-    deletedAt: response.deletedAt ? new Date(response.deletedAt) : undefined,
-} as Message)
+type Response = ConversationClosedResponse | ConversationDeletedResponse | ConversationUpdatedResponse | FileMessageResponse | JoinedResponse | LeftResponse | LoadedMessagesResponse | MessageDeletedResponse | MessageUpdatedResponse|TextMessageResponse
 
 interface MessagesProps {
     conversation: ConversationData
@@ -101,6 +55,12 @@ export const Messages = (props: MessagesProps) => {
     const messagesEndRef = React.createRef<HTMLDivElement>()
 
     useEffect(() => {
+        const updateConversation = (c: ConversationData) => {
+            setUpdating(new Set())
+            setUpdate(new Set())
+            setConversation(c)
+        }
+
         const addMessage = (msg: Message) => {
             const updated = { ...conversation }
 
@@ -118,7 +78,7 @@ export const Messages = (props: MessagesProps) => {
                 updated.total = 1
             }
 
-            setConversation(updated)
+            updateConversation(updated)
         }
 
         const appendMessages = (messages: Message[], count: number) => {
@@ -135,68 +95,52 @@ export const Messages = (props: MessagesProps) => {
 
             if (conversation.total && conversation.messages?.length) {
                 updated.messages = conversationMessages.concat(conversation.messages)
+                updated.total = updated.messages?.length ?? 0
             } else {
                 updated.messages = conversationMessages
                 updated.total = count
             }
 
-            setConversation(updated)
+            updateConversation(updated)
         }
 
-        const deleteMessage = (response: any) => {
+        const deleteMessage = (response: MessageDeletedResponse) => {
             const { messageId, deletedAt } = response.data
             const deletedMessage = conversation.messages?.find(m => m.id === messageId)
             if (deletedMessage) {
                 deletedMessage.deletedAt = new Date(deletedAt)
                 const messages = conversation.messages ? [...conversation.messages] : undefined
-                setConversation({ ...conversation, messages })
+                updateConversation({ ...conversation, messages })
             }
         }
 
-        const updateMessage = (response: any) => {
+        const updateMessage = (response: MessageUpdatedResponse) => {
             const { messageId, updatedAt } = response.data
             const updatedMessage = conversation.messages?.find(m => m.id === messageId)
             if (updatedMessage) {
                 switch (updatedMessage.type) {
                     case 'file':
                         {
-                            const { link, name, type, size } = response.data as FileMessage
+                            const { link, name, type, size } = response.data
                             updatedMessage.data = { link, name, type, size }
                         }
                         break
                     case 'text':
                         {
-                            const { text } = response.data as TextMessage
+                            const { text } = response.data
                             updatedMessage.data = { text }
                         }
                         break
                 }
                 updatedMessage.updatedAt = new Date(updatedAt)
                 const messages = conversation.messages ? [...conversation.messages] : undefined
-                setConversation({ ...conversation, messages })
+                updateConversation({ ...conversation, messages })
             }
         }
 
-        const handleMessage = (response: any) => {
+        const handleMessage = (response: Response) => {
             if (response.type === 'loaded-messages') {
-                const loaded = response.messages?.map(createMessage)
-                const count = response.count
-
-                const updated = { ...conversation }
-
-                if (loaded?.length && count) {
-                    if (updated.total && updated.messages?.length) {
-                        updated.total = updated.messages.length + count
-                        updated.messages = loaded.concat(updated.messages)
-                    } else {
-                        updated.messages = loaded
-                        updated.total = count
-                    }
-                } else {
-                    updated.total = updated.messages?.length ?? 0
-                }
-
-                setConversation(updated)
+                appendMessages(response.messages?.map(createMessage), response.count)
                 return
             }
 
@@ -206,10 +150,10 @@ export const Messages = (props: MessagesProps) => {
 
             switch (response.type) {
                 case 'closed':
-                    setConversation({ ...conversation, closedAt: new Date(response.data.closedAt) })
+                    updateConversation({ ...conversation, closedAt: new Date(response.data.closedAt) })
                     break
                 case 'deleted':
-                    setConversation({ ...conversation, closedAt: new Date(response.data.closedAt), deletedAt: new Date(response.data.deletedAt) })
+                    updateConversation({ ...conversation, closedAt: new Date(response.data.closedAt), deletedAt: new Date(response.data.deletedAt) })
                     break
                 case 'joined':
                     {
@@ -218,7 +162,7 @@ export const Messages = (props: MessagesProps) => {
                             connected.push(response.fromId)
                         }
 
-                        setConversation({ ...conversation, connected })
+                        updateConversation({ ...conversation, connected })
                     }
                     break
                 case 'left':
@@ -228,11 +172,8 @@ export const Messages = (props: MessagesProps) => {
                             connected = connected.filter(id => id !== response.fromId)
                         }
 
-                        setConversation({ ...conversation, connected })
+                        updateConversation({ ...conversation, connected })
                     }
-                    break
-                case 'loaded-messages':
-                    appendMessages(response.messages?.map(createMessage), response.count)
                     break
                 case 'message-deleted':
                     deleteMessage(response)
@@ -245,24 +186,21 @@ export const Messages = (props: MessagesProps) => {
                     addMessage(createMessage(response))
                     break
                 case 'updated':
-                    setConversation({ ...conversation, title: response.data.title, participants: response.data.participants, updatedAt: new Date(response.data.updatedAt) })
+                    updateConversation({ ...conversation, title: response.data.title, participants: response.data.participants, updatedAt: new Date(response.data.updatedAt) })
                     break
             }
         }
 
-        handlers.add(handleMessage)
+        handlers.add(handleMessage as Action)
+
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
 
         return () => {
-            handlers.remove(handleMessage)
+            handlers.remove(handleMessage as Action)
         }
-    }, [handlers, conversation, setConversation])
+    }, [handlers, conversation, messagesEndRef])
 
-    useEffect(() => {
-        setUpdating(new Set())
-        setUpdate(new Set())
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, [conversation, setUpdating, setUpdate])
-
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleClickLoad = (e: React.MouseEvent) => {
         const excludeIds: string[] = []
         let before: Date | undefined
@@ -307,35 +245,27 @@ export const Messages = (props: MessagesProps) => {
         props.messageDelete(id)
     }
 
-    const handleClickUpdate = useCallback((id: string, participants?: string[], title?: string) => {
-        props.update(id, participants, title)
-    }, [props.update])
-
-    const handleClickClose = useCallback((id: string) => {
-        props.close(id)
-    }, [props.close])
-
-    const handleClickDelete = useCallback((id: string) => {
-        props.delete(id)
-    }, [props.delete])
+    const propsMessageUpdate = props.messageUpdate
 
     const messageUpdate = useCallback((id: string | undefined, _: MessageType, data: FileMessage | TextMessage) => {
         const set = new Set(updating)
         set.add(id)
         setUpdating(set)
 
-        props.messageUpdate(id!, data)
-    }, [props.messageUpdate])
+        propsMessageUpdate(id!, data)
+    }, [updating, propsMessageUpdate])
+
+    const propsSend = props.send
 
     const messageSend = useCallback((_: string | undefined, type: MessageType, data: FileMessage | TextMessage) => {
-        props.send(type, data)
-    }, [props.send])
+        propsSend(type, data)
+    }, [propsSend])
 
     const { closedAt, messages, total } = conversation
 
     return <>
         <h1>Conversation</h1>
-        <ConversationInfo conversation={conversation} onClose={handleClickClose} onDelete={handleClickDelete} onUpdate={handleClickUpdate} />
+        <ConversationInfo conversation={conversation} onClose={props.close} onDelete={props.delete} onUpdate={props.update} />
         <h1>Messages</h1>
         <button onClick={handleClickLoad} disabled={messages?.length === total}>Load more</button>
         <span> Loaded: {messages?.length}</span>
@@ -357,7 +287,7 @@ export const Messages = (props: MessagesProps) => {
                         <label htmlFor={'update-' + m.id}>Update</label>
                     </>}
                 </div>
-                {m.id && !m.deletedAt && update.has(m.id) && <TextMessageEditor id={m.id} type={m.type} data={m.data as FileMessage | TextMessage} ok={messageUpdate} />}
+                {m.id && !m.deletedAt && update.has(m.id) && <TextMessageEditor id={m.id} type={m.type as MessageType} data={m.data as FileMessage | TextMessage} ok={messageUpdate} />}
             </div>)}
             <div ref={messagesEndRef} />
         </div>

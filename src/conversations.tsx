@@ -1,11 +1,16 @@
 import React, { memo, useCallback, useContext, useState, useEffect } from 'react'
-import ConversationInfo, { type Conversation, type ConversationData, createConversation } from './conversation'
-import MessageHandlersContext from './messageHandlersContext'
+import MessageHandlersContext, {type Action} from './messageHandlersContext'
+import ConversationInfo, { type ConversationData } from './conversation'
+import { createConversation } from './responses'
+
+import type { Conversation, ConversationClosedResponse, ConversationDeletedResponse, ConversationUpdatedResponse, LoadedConversationsResponse } from './responses'
 
 export interface ConversationsData {
     conversations: ConversationData[]
-    total: number,
+    total: number
 }
+
+type Response = ConversationClosedResponse | ConversationDeletedResponse | ConversationUpdatedResponse | LoadedConversationsResponse
 
 interface ConversationsProps {
     conversations: ConversationsData
@@ -17,7 +22,7 @@ interface ConversationsProps {
     delete: (id: string) => void
 }
 
-interface ConversationProps {
+interface ConversationsInfoProps {
     conversations: Conversation[]
     onJoin: (id: string) => void
     onUpdate: (id: string, participants?: string[], title?: string) => void
@@ -25,7 +30,7 @@ interface ConversationProps {
     onDelete: (id: string) => void
 }
 
-const MemoizedConversations = memo((props: ConversationProps) => <>
+const MemoizedConversations = memo((props: ConversationsInfoProps) => <>
     {props.conversations.map(c => <ConversationInfo key={c.id} conversation={c} onClose={props.onClose} onDelete={props.onDelete} onUpdate={props.onUpdate} onJoin={props.onJoin} />)}
 </>)
 
@@ -38,7 +43,7 @@ const Conversations = (props: ConversationsProps) => {
     const [title, setTitle] = useState('')
 
     useEffect(() => {
-        const handleMessage = (response: any) => {
+        const handleMessage = (response: Response) => {
             if (response.type === 'loaded') {
                 const loaded = response.conversations?.map(createConversation)
                 const count = response.count
@@ -105,10 +110,10 @@ const Conversations = (props: ConversationsProps) => {
             }
         }
 
-        handlers.add(handleMessage)
+        handlers.add(handleMessage as Action)
 
         return () => {
-            handlers.remove(handleMessage)
+            handlers.remove(handleMessage as Action)
         }
     }, [conversations, handlers])
 
@@ -120,40 +125,24 @@ const Conversations = (props: ConversationsProps) => {
         setTitle(e.target.value)
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleClickLoad = (e: React.MouseEvent) => {
         props.loadMore(conversations?.conversations.map(c => c.id))
     }
 
-    const handleClickWatch = (e: React.MouseEvent) => {
-        props.watch()
-    }
+    const propsJoin = props.join
 
-    const handleClickJoin = useCallback((id: string) => {
-        props.join(id)
-    }, [props.join])
-
-    const handleClickUpdate = useCallback((id: string, participants?: string[], title?: string) => {
-        props.update(id, participants, title)
-    }, [props.update])
-
-    const handleClickClose = useCallback((id: string) => {
-        props.close(id)
-    }, [props.close])
-
-    const handleClickDelete = useCallback((id: string) => {
-        props.delete(id)
-    }, [props.delete])
-
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleClickCreate = useCallback((e: React.MouseEvent) => {
-        props.join(null, participants.split(',').filter(s => s.trim()), title)
-    }, [props.join, participants])
+        propsJoin(null, participants.split(',').filter(s => s.trim()), title)
+    }, [title, participants, propsJoin])
 
     return <>
         <h1>Conversations</h1>
         <button onClick={handleClickLoad} disabled={conversations.conversations?.length === conversations.total}>Load more</button>
         <span> Loaded: {conversations.conversations?.length}</span>
         <span> Total: {conversations.total}</span>
-        <MemoizedConversations conversations={conversations.conversations} onJoin={handleClickJoin} onUpdate={handleClickUpdate} onClose={handleClickClose} onDelete={handleClickDelete} />
+        <MemoizedConversations conversations={conversations.conversations} onJoin={props.join} onUpdate={props.update} onClose={props.close} onDelete={props.delete} />
         <div>
             <label htmlFor="title-input">Title:</label>
             <input type="text" id="title-input" placeholder="Type title here..." size={50} onChange={handleChangeTitle} />
@@ -161,7 +150,7 @@ const Conversations = (props: ConversationsProps) => {
             <input type="text" id="participants-input" placeholder="Type your participants here..." size={50} onChange={handleChangeParticipants} />
             <button onClick={handleClickCreate}>Create</button>
         </div>
-        <button onClick={handleClickWatch} >Watch</button>
+        <button onClick={props.watch} >Watch</button>
     </>
 }
 

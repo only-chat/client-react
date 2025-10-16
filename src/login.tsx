@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 
 interface LoginProps {
     login: (username: string, password: string) => void
@@ -9,8 +9,7 @@ const Login = (props: LoginProps) => {
     const [password, setPassword] = useState('1')
     const [inProgress, setInProgress] = useState(false)
 
-    useEffect(() => setInProgress(false), [])
-
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleClick = (e: React.MouseEvent) => {
         setInProgress(true)
         props.login(username, password)

@@ -1,11 +1,24 @@
 import React, { useContext, useEffect, useState } from 'react'
-import { createMessage } from './messages'
-import { createConversation } from './conversation'
+import { createConversation, createMessage } from './responses'
+
 import UserContext from './userContext'
-import MessageHandlersContext from './messageHandlersContext'
+import MessageHandlersContext, { type Action } from './messageHandlersContext'
 
 import type { ConversationsData } from './conversations'
-import type { TextMessage, FileMessage } from './messages'
+import type {
+    ConversationClosedResponse,
+    ConversationDeletedResponse,
+    ConversationUpdatedResponse,
+    LoadedConversationsResponse,
+    FileMessageResponse,
+    JoinedResponse,
+    LeftResponse,
+    MessageDeletedResponse,
+    MessageUpdatedResponse,
+    TextMessageResponse,
+} from './responses'
+
+type Response = ConversationClosedResponse | ConversationDeletedResponse | ConversationUpdatedResponse | FileMessageResponse | JoinedResponse | LeftResponse | LoadedConversationsResponse | MessageDeletedResponse | MessageUpdatedResponse | TextMessageResponse
 
 interface WatchConversationsProps {
     conversations: ConversationsData
@@ -17,8 +30,10 @@ const WatchingConversations = (props: WatchConversationsProps) => {
     const handlers = useContext(MessageHandlersContext)
     const [conversations, setConversations] = useState<ConversationsData>(props.conversations)
 
+    const propsLoadMore = props.loadMore
+
     useEffect(() => {
-        const handleMessage = (response: any) => {
+        const handleMessage = (response: Response) => {
             if (response.type === 'loaded') {
                 const loaded = response.conversations?.map(createConversation)
                 const count = response.count
@@ -52,8 +67,8 @@ const WatchingConversations = (props: WatchConversationsProps) => {
             const conversation = conversations.conversations.find(c => c.id === response.conversationId)
 
             if (!conversation) {
-                if (!response.participants || response.participants.includes(user.name)) {
-                    props.loadMore([response.conversationId])
+                if (!response.participants || response.participants.includes(user.name!)) {
+                    propsLoadMore([response.conversationId])
                 }
 
                 return
@@ -100,13 +115,13 @@ const WatchingConversations = (props: WatchConversationsProps) => {
                             switch (updatedMessage.type) {
                                 case 'file':
                                     {
-                                        const { link, name, type, size } = response.data as FileMessage
+                                        const { link, name, type, size } = response.data
                                         updatedMessage.data = { link, name, type, size }
                                     }
                                     break
                                 case 'text':
                                     {
-                                        const { text } = response.data as TextMessage
+                                        const { text } = response.data
                                         updatedMessage.data = { text }
                                     }
                                     break
@@ -118,24 +133,26 @@ const WatchingConversations = (props: WatchConversationsProps) => {
                     break
                 case 'file':
                 case 'text':
-                    const msg = createMessage(response)
+                    {
+                        const msg = createMessage(response)
 
-                    if (conversation.latestMessage) {
-                        const dates = [new Date(conversation.latestMessage.createdAt).getTime()]
-                        if (conversation.latestMessage.updatedAt) {
-                            dates.push(new Date(conversation.latestMessage.updatedAt).getTime())
-                        }
-                        if (conversation.latestMessage.deletedAt) {
-                            dates.push(new Date(conversation.latestMessage.deletedAt).getTime())
-                        }
-                        const maxDate = Math.max(...dates)
-                        if (maxDate <= msg.createdAt.getTime()) {
+                        if (conversation.latestMessage) {
+                            const dates = [new Date(conversation.latestMessage.createdAt).getTime()]
+                            if (conversation.latestMessage.updatedAt) {
+                                dates.push(new Date(conversation.latestMessage.updatedAt).getTime())
+                            }
+                            if (conversation.latestMessage.deletedAt) {
+                                dates.push(new Date(conversation.latestMessage.deletedAt).getTime())
+                            }
+                            const maxDate = Math.max(...dates)
+                            if (maxDate <= msg.createdAt.getTime()) {
+                                conversation.latestMessage = msg
+                                setConversations({ ...conversations })
+                            }
+                        } else {
                             conversation.latestMessage = msg
                             setConversations({ ...conversations })
                         }
-                    } else {
-                        conversation.latestMessage = msg
-                        setConversations({ ...conversations })
                     }
                     break
                 case 'updated':
@@ -147,15 +164,16 @@ const WatchingConversations = (props: WatchConversationsProps) => {
             }
         }
 
-        handlers.add(handleMessage)
+        handlers.add(handleMessage as Action)
 
         return () => {
-            handlers.remove(handleMessage)
+            handlers.remove(handleMessage as Action)
         }
-    }, [conversations, user.name, handlers, props.loadMore])
+    }, [conversations, user.name, handlers, propsLoadMore])
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleClickLoad = (e: React.MouseEvent) => {
-        props.loadMore(undefined, conversations?.conversations.map(c => c.id))
+        propsLoadMore(undefined, conversations?.conversations.map(c => c.id))
     }
 
     return <>

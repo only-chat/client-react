@@ -1,21 +1,8 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react'
+import React, { useCallback, useContext, useState } from 'react'
 import ConversationEditor from './conversationEditor'
-import { Message, createMessage } from './messages'
 import UserContext from './userContext'
 
-export interface Conversation {
-    id: string
-    clientConversationId?: string
-    title?: string
-    participants: string[]
-    createdBy: string
-    createdAt: Date
-    updatedAt?: Date
-    closedAt?: Date
-    deletedAt?: Date
-    latestMessage?: Message
-    leftAt?: Date
-}
+import type { Conversation, Message } from './responses'
 
 export interface ConversationData extends Conversation {
     connected?: string[]
@@ -23,20 +10,6 @@ export interface ConversationData extends Conversation {
     total?: number
     leftAt?: Date
 }
-
-export const createConversation = (response: any) => ({
-    id: response.conversation.id,
-    title: response.conversation.title,
-    participants: response.conversation.participants,
-    createdBy: response.conversation.createdBy,
-    createdAt: new Date(response.conversation.createdAt),
-    updatedAt: response.conversation.updatedAt ? new Date(response.conversation.updatedAt) : undefined,
-    closedAt: response.conversation.closedAt ? new Date(response.conversation.closedAt) : undefined,
-    deletedAt: response.conversation.deletedAt ? new Date(response.conversation.deletedAt) : undefined,
-    latestMessage: response.latestMessage ? createMessage(response.latestMessage) : undefined,
-    leftAt: response.leftAt ? new Date(response.leftAt) : undefined,
-    connected: response.connected,
-} as Conversation)
 
 interface ConversationInfoProps {
     conversation: ConversationData
@@ -50,18 +23,22 @@ const ConversationInfo = (props: ConversationInfoProps) => {
     const user = useContext(UserContext)
     const [update, setUpdate] = useState(false)
     const [updating, setUpdating] = useState(false)
+    const [conversation, setConversation] = useState(props.conversation)
 
     const c = props.conversation
 
-    useEffect(() => {
+    if (c !== conversation) {
+        setConversation(c)
         setUpdating(false)
         setUpdate(false)
-    }, [c, setUpdating, setUpdate])
+    }
+
+    const propsOnUpdate = props.onUpdate
 
     const handleClickUpdateOk = useCallback((participants?: string[], title?: string) => {
         setUpdating(true)
-        props.onUpdate(c.id, participants, title)
-    }, [c.id, props.onUpdate, setUpdating])
+        propsOnUpdate(c.id, participants, title)
+    }, [c.id, propsOnUpdate])
 
     const handleClickClose = (e: React.MouseEvent) => {
         setUpdating(true)
@@ -101,7 +78,7 @@ const ConversationInfo = (props: ConversationInfoProps) => {
                 {c.createdBy === user?.name && <>
                     {!c.closedAt && <button onClick={handleClickClose} data-id={c.id} disabled={!!c.closedAt || updating}>Close</button>}
                     {!c.deletedAt && <button onClick={handleClickDelete} data-id={c.id} disabled={updating}>Delete</button>}
-                    <input id={htmlFor} type='checkbox' checked={update} disabled={updating} onChange={e => setUpdate(!update)} />
+                    <input id={htmlFor} type='checkbox' checked={update} disabled={updating} onChange={() => setUpdate(!update)} />
                     <label htmlFor={htmlFor}>Update</label>
                 </>}
             </>}

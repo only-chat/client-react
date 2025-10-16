@@ -1,17 +1,20 @@
 import { createContext } from 'react'
+import type {ServerResponse, MessageResponse} from './responses'
+
+export type Action = (response: ServerResponse | MessageResponse) => void
 
 export interface MessageHandlers {
-    handlers: ((response: any) => void)[]
-    add: (func: (response: any) => void) => void
-    remove: (func: (response: any) => void) => void
+    handlers: Action[]
+    add: (func: Action) => void
+    remove: (func: Action) => void
 }
 
 const messageHandlersContext = createContext<MessageHandlers>({
     handlers: [],
-    add(func: ((response: any) => void)) {
+    add(func: Action) {
         this.handlers.push(func)
     },
-    remove(func: ((response: any) => void)) {
+    remove(func: Action) {
         const index = this.handlers.indexOf(func)
         if (index >= 0) {
             this.handlers.splice(index, 1)

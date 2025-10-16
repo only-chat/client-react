@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import type { MessageType, FileMessage, TextMessage } from './messages'
 
 interface TextMessageProps {
@@ -26,10 +26,6 @@ const TextMessageEditor = (props: TextMessageProps) => {
     const [size, setSize] = useState(fileData?.size)
     const [updating, setUpdating] = useState(false)
 
-    useEffect(() => {
-        setUpdating(false)
-    }, [setUpdating])
-
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setText(e.target.value)
     }
@@ -52,6 +48,7 @@ const TextMessageEditor = (props: TextMessageProps) => {
 
     const t = props.type ?? messageType
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleClick = (e: React.MouseEvent) => {
         if (props.id) {
             setUpdating(true)
@@ -82,9 +79,9 @@ const TextMessageEditor = (props: TextMessageProps) => {
     return <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
         {!props.type && <fieldset disabled={updating}>
             <legend>Message type:</legend>
-            <input type="radio" id="text" value={textType} checked={messageType === textType} onChange={e => setMessageType(textType)} />
+            <input type="radio" id="text" value={textType} checked={messageType === textType} onChange={() => setMessageType(textType)} />
             <label htmlFor="text">text</label>
-            <input type="radio" id="file" value={fileType} checked={messageType === fileType} onChange={e => setMessageType(fileType)} />
+            <input type="radio" id="file" value={fileType} checked={messageType === fileType} onChange={() => setMessageType(fileType)} />
             <label htmlFor="file">file</label>
         </fieldset>}
         {messageType === fileType && <>

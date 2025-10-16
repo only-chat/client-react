@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 
 interface ConversationEditorProps {
     title: string
@@ -11,10 +11,6 @@ const ConversationEditor = (props: ConversationEditorProps) => {
     const [participants, setParticipants] = useState(props.participants)
     const [updating, setUpdating] = useState(false)
 
-    useEffect(() => {
-        setUpdating(false)
-    }, [setUpdating])
-
     const handleChangeTitle = (e: React.ChangeEvent<HTMLInputElement>) => {
         setTitle(e.target.value)
     }
@@ -23,6 +19,7 @@ const ConversationEditor = (props: ConversationEditorProps) => {
         setParticipants(e.target.value)
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleClick = (e: React.MouseEvent) => {
         setUpdating(true)
         props.ok(participants.split(',').filter(s => s.trim()), title)

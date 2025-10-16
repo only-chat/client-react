@@ -1,17 +1,19 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react'
+import React, { useCallback, useContext, useEffect, useState, useSyncExternalStore } from 'react'
 import Conversations from './conversations'
-import { createConversation } from './conversation'
-import { Connect, Close } from './connect'
 import Login from './login'
-import Messages, { createMessage } from './messages'
+import Messages from './messages'
 import MessageHandlersContext from './messageHandlersContext'
 import UserContext from './userContext'
 import WatchingConversations from './watch'
+import { Connect, Close } from './connect'
+import { createConversation, createMessage } from './responses'
 
 import type { MessageType, TextMessage, FileMessage } from './messages'
 import type { ConversationData } from './conversation'
 import type { ConversationsData } from './conversations'
 import type { User } from './userContext'
+
+const getUndefinedSnapshot = () => undefined
 
 const App = () => {
     const [wsInstance, setWsInstance] = useState<WebSocket>()
@@ -20,6 +22,7 @@ const App = () => {
     const [watchingConversations, setWatchingConversations] = useState<ConversationsData>()
     const [conversation, setConversation] = useState<ConversationData>()
     const [user, setUser] = useState<User>({})
+
     const handlers = useContext(MessageHandlersContext)
 
     const closeConnection = useCallback(() => {
@@ -31,25 +34,25 @@ const App = () => {
             wsInstance.close()
             setWsInstance(undefined)
         }
-    }, [wsInstance, setWsInstance])
+    }, [wsInstance])
 
     const connect = useCallback((h: string) => {
         const ws = new WebSocket(h)
         setWsInstance(ws)
-    }, [wsInstance, isConnected])
+    }, [])
 
     const login = useCallback((name: string, password: string) => {
         wsInstance?.send(
             JSON.stringify({ authInfo: { name, password }, conversationsSize: 0 })
         )
         setUser({ name })
-    }, [wsInstance, setUser])
+    }, [wsInstance])
 
     const loadMoreConversations = useCallback((excludeIds?: string[]) => {
         wsInstance?.send(
             JSON.stringify({ type: 'load', data: { size: 1, excludeIds } })
         )
-    }, [wsInstance, conversations])
+    }, [wsInstance])
 
     const loadMoreWatchingConversations = useCallback((ids?: string[], excludeIds?: string[]) => {
         wsInstance?.send(
@@ -104,7 +107,7 @@ const App = () => {
         wsInstance?.send(
             JSON.stringify({ type: 'load-messages', data: { size: 1, before, excludeIds } })
         )
-    }, [wsInstance, conversation])
+    }, [wsInstance])
 
     const send = useCallback((type: MessageType, data: FileMessage | TextMessage) => {
         wsInstance?.send(
@@ -112,15 +115,7 @@ const App = () => {
         )
     }, [wsInstance])
 
-    useEffect(() => {
-        return () => setWsInstance(undefined)
-    }, [])
-
-    useEffect(() => {
-        if (!wsInstance) {
-            return
-        }
-
+    const subscribeMessage = useCallback(() => {
         const handleMessage = (event: MessageEvent) => {
             const response = JSON.parse(event.data)
             switch (response.type) {
@@ -135,7 +130,7 @@ const App = () => {
                     break
                 case 'conversation':
                     setConversation({
-                        ...response.conversation,
+                        ...createConversation(response),
                         connected: response.connected,
                         messages: response.messages?.messages.reverse().map(createMessage),
                         total: response.messages?.total,
@@ -155,6 +150,19 @@ const App = () => {
             console.debug("WebSocket message: ", event)
         }
 
+        if (!wsInstance) {
+            return getUndefinedSnapshot
+        }
+
+        wsInstance.addEventListener('message', handleMessage)
+
+        return () => wsInstance.removeEventListener('message', handleMessage)
+
+    }, [wsInstance, handlers])
+
+    useSyncExternalStore(subscribeMessage, getUndefinedSnapshot);
+
+    const subscribeClose = useCallback(() => {
         const handleClose = (event: CloseEvent) => {
             setConversation(undefined)
             setConversations(undefined)
@@ -168,20 +176,38 @@ const App = () => {
             }
         }
 
-        const handleError = (event: Event) => {
+        if (!wsInstance) {
+            return getUndefinedSnapshot
+        }
+
+        wsInstance.addEventListener('close', handleClose)
+
+        return () => wsInstance.removeEventListener('close', handleClose)
+
+    }, [wsInstance])
+
+    useSyncExternalStore(subscribeClose, getUndefinedSnapshot);
+
+    const subscribeError = useCallback(() => {
+        function handleError(event: Event) {
             console.error("WebSocket error: ", event)
         }
 
-        wsInstance.addEventListener('message', handleMessage)
-        wsInstance.addEventListener('close', handleClose)
+        if (!wsInstance) {
+            return getUndefinedSnapshot
+        }
+
         wsInstance.addEventListener('error', handleError)
 
-        return () => {
-            wsInstance.removeEventListener('message', handleMessage)
-            wsInstance.removeEventListener('close', handleClose)
-            wsInstance.removeEventListener('error', handleError)
-        }
-    }, [wsInstance, conversation, conversations, watchingConversations, handlers, setConversation, setConversations, setWatchingConversations, setIsConnected, setUser])
+        return () => wsInstance.removeEventListener('error', handleError)
+
+    }, [wsInstance])
+
+    useSyncExternalStore(subscribeError, getUndefinedSnapshot);
+
+    useEffect(() => {
+        return () => setWsInstance(undefined)
+    }, [])
 
     return <UserContext.Provider value={user}>
         {conversation && <Messages {...{ conversation, loadMore: loadMoreMessages, send, update: updateConversation, close: closeConversation, delete: deleteConversation, messageUpdate, messageDelete }} />}
