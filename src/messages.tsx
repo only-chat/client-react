@@ -144,50 +144,53 @@ export const Messages = (props: MessagesProps) => {
                 return
             }
 
-            if (conversation.id !== response.conversationId) {
-                return
+            if (conversation.id === response.conversationId) {
+                switch (response.type) {
+                    case 'joined':
+                        {
+                            const connected = conversation.connected ?? [response.fromId]
+                            if (!connected.includes(response.fromId)) {
+                                connected.push(response.fromId)
+                            }
+
+                            updateConversation({ ...conversation, connected })
+                        }
+                        break
+                    case 'left':
+                        {
+                            let connected = conversation.connected
+                            if (connected?.includes(response.fromId)) {
+                                connected = connected.filter(id => id !== response.fromId)
+                            }
+
+                            updateConversation({ ...conversation, connected })
+                        }
+                        break
+                    case 'message-deleted':
+                        deleteMessage(response)
+                        break
+                    case 'message-updated':
+                        updateMessage(response)
+                        break
+                    case 'file':
+                    case 'text':
+                        addMessage(createMessage(response))
+                        break
+                }
             }
 
-            switch (response.type) {
-                case 'closed':
-                    updateConversation({ ...conversation, closedAt: new Date(response.data.closedAt) })
-                    break
-                case 'deleted':
-                    updateConversation({ ...conversation, closedAt: new Date(response.data.closedAt), deletedAt: new Date(response.data.deletedAt) })
-                    break
-                case 'joined':
-                    {
-                        const connected = conversation.connected ?? [response.fromId]
-                        if (!connected.includes(response.fromId)) {
-                            connected.push(response.fromId)
-                        }
-
-                        updateConversation({ ...conversation, connected })
-                    }
-                    break
-                case 'left':
-                    {
-                        let connected = conversation.connected
-                        if (connected?.includes(response.fromId)) {
-                            connected = connected.filter(id => id !== response.fromId)
-                        }
-
-                        updateConversation({ ...conversation, connected })
-                    }
-                    break
-                case 'message-deleted':
-                    deleteMessage(response)
-                    break
-                case 'message-updated':
-                    updateMessage(response)
-                    break
-                case 'file':
-                case 'text':
-                    addMessage(createMessage(response))
-                    break
-                case 'updated':
-                    updateConversation({ ...conversation, title: response.data.title, participants: response.data.participants, updatedAt: new Date(response.data.updatedAt) })
-                    break
+            if (conversation.id === (response.data as ConversationClosedResponse | ConversationDeletedResponse | ConversationUpdatedResponse)?.conversationId) {
+                switch (response.type) {
+                    case 'closed':
+                        updateConversation({ ...conversation, closedAt: new Date(response.data.closedAt) })
+                        break
+                    case 'deleted':
+                        updateConversation({ ...conversation, closedAt: new Date(response.data.closedAt), deletedAt: new Date(response.data.deletedAt) })
+                        break
+                    case 'updated':
+                        updateConversation({ ...conversation, title: response.data.title, participants: response.data.participants, updatedAt: new Date(response.data.updatedAt) })
+                        break
+                }
             }
         }
 

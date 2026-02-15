@@ -68,7 +68,7 @@ export type ServerResponse = LoadedConversationsResponse | LoadedMessagesRespons
 
 interface ServerMessageResponse {
     id?: string
-    conversationId: string
+    conversationId?: string
     participants: string[]
     connectionId: string
     fromId: string
