@@ -2,6 +2,10 @@ type MessageResponseType = MessageResponse['type']
 
 type MessageResponseData = ConversationClosedData | ConversationDeletedData | ConversationUpdatedData | MessageDeletedData | MessageUpdatedData | FileMessageData | TextMessageData | null
 
+type MessageResponseMetaDataValue = string | number | boolean | null
+
+type MessageResponseMetaData = { [name: string]: MessageResponseMetaDataValue | MessageResponseMetaDataValue[] }
+
 export interface Message {
     id?: string
     conversationId: string
@@ -10,6 +14,7 @@ export interface Message {
     fromId: string
     type: MessageResponseType
     data: MessageResponseData
+    metadata: MessageResponseMetaData
     createdAt: Date
     updatedAt?: Date
     deletedAt?: Date
@@ -74,6 +79,7 @@ interface ServerMessageResponse {
     fromId: string
     type: MessageResponseType
     data: MessageResponseData
+    metadata: MessageResponseMetaData
     createdAt: string
     updatedAt?: string
     deletedAt?: string
@@ -168,6 +174,7 @@ export const createMessage = (response: ServerMessageResponse) => ({
     fromId: response.fromId,
     type: response.type,
     data: response.data,
+    metadata: response.metadata,
     createdAt: new Date(response.createdAt),
     updatedAt: response.updatedAt ? new Date(response.updatedAt) : undefined,
     deletedAt: response.deletedAt ? new Date(response.deletedAt) : undefined,

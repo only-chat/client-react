@@ -1,6 +1,6 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react'
+import React, { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import ConversationInfo, { type ConversationData } from './conversation'
-import MessageHandlersContext, {type Action} from './messageHandlersContext'
+import MessageHandlersContext, { type Action } from './messageHandlersContext'
 import TextMessageEditor from './textMessageEditor'
 import UserContext from './userContext'
 import { createMessage } from './responses'
@@ -32,7 +32,9 @@ export interface TextMessage {
 
 export type MessageType = 'text' | 'file'
 
-type Response = ConversationClosedResponse | ConversationDeletedResponse | ConversationUpdatedResponse | FileMessageResponse | JoinedResponse | LeftResponse | LoadedMessagesResponse | MessageDeletedResponse | MessageUpdatedResponse|TextMessageResponse
+export type MessageMetadata = { reply?: string[], forward?: string[] }
+
+type Response = ConversationClosedResponse | ConversationDeletedResponse | ConversationUpdatedResponse | FileMessageResponse | JoinedResponse | LeftResponse | LoadedMessagesResponse | MessageDeletedResponse | MessageUpdatedResponse | TextMessageResponse
 
 interface MessagesProps {
     conversation: ConversationData
@@ -41,7 +43,7 @@ interface MessagesProps {
     delete: (id: string) => void
     messageUpdate: (id: string, data: FileMessage | TextMessage) => void
     messageDelete: (id: string) => void
-    send: (type: MessageType, data: FileMessage | TextMessage) => void
+    send: (type: MessageType, data: FileMessage | TextMessage, metadata?: MessageMetadata) => void
     loadMore: (before?: Date, excludeIds?: string[]) => void
 }
 
@@ -50,9 +52,11 @@ export const Messages = (props: MessagesProps) => {
     const handlers = useContext(MessageHandlersContext)
     const [conversation, setConversation] = useState(props.conversation)
     const [update, setUpdate] = useState(new Set())
+    const [reply, setReply] = useState(new Set<string>())
+    const [forward, setForward] = useState(new Set<string>())
     const [updating, setUpdating] = useState(new Set())
 
-    const messagesEndRef = React.createRef<HTMLDivElement>()
+    const messagesEndRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
         const updateConversation = (c: ConversationData) => {
@@ -201,7 +205,7 @@ export const Messages = (props: MessagesProps) => {
         return () => {
             handlers.remove(handleMessage as Action)
         }
-    }, [handlers, conversation, messagesEndRef])
+    }, [handlers, conversation])
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleClickLoad = (e: React.MouseEvent) => {
@@ -227,9 +231,33 @@ export const Messages = (props: MessagesProps) => {
         props.loadMore(before, excludeIds)
     }
 
+    const handleChangeReply = (e: React.ChangeEvent) => {
+        const set = new Set(reply)
+        const id = (e.currentTarget as HTMLElement).dataset.id!
+        if (set.has(id)) {
+            set.delete(id)
+        } else {
+            set.add(id)
+        }
+
+        setReply(set)
+    }
+
+    const handleChangeForward = (e: React.ChangeEvent) => {
+        const set = new Set(forward)
+        const id = (e.currentTarget as HTMLElement).dataset.id!
+        if (set.has(id)) {
+            set.delete(id)
+        } else {
+            set.add(id)
+        }
+
+        setForward(set)
+    }
+
     const handleChangeUpdate = (e: React.ChangeEvent) => {
         const set = new Set(update)
-        const id = e.currentTarget.getAttribute('data-id')
+        const id = (e.currentTarget as HTMLElement).dataset.id
         if (set.has(id)) {
             set.delete(id)
         } else {
@@ -241,7 +269,7 @@ export const Messages = (props: MessagesProps) => {
 
     const handleClickMessageDelete = (e: React.MouseEvent) => {
         const set = new Set(updating)
-        const id = e.currentTarget.getAttribute('data-id')!
+        const id = (e.currentTarget as HTMLElement).dataset.id!
         set.add(id)
         setUpdating(set)
 
@@ -261,8 +289,22 @@ export const Messages = (props: MessagesProps) => {
     const propsSend = props.send
 
     const messageSend = useCallback((_: string | undefined, type: MessageType, data: FileMessage | TextMessage) => {
-        propsSend(type, data)
-    }, [propsSend])
+        let metadata: MessageMetadata | undefined = undefined;
+
+        if (reply.size > 0) {
+            metadata = { reply: [...reply] }
+        }
+
+        if (forward.size > 0) {
+            metadata ??= {};
+            metadata.forward = [...forward]
+        }
+
+        setReply(new Set<string>())
+        setForward(new Set<string>())
+
+        propsSend(type, data, metadata)
+    }, [reply, forward, propsSend])
 
     const { closedAt, messages, total } = conversation
 
@@ -280,10 +322,17 @@ export const Messages = (props: MessagesProps) => {
                     <div>From: {m.fromId}</div>
                     <div>Type: {m.type}</div>
                     <div>Data: {JSON.stringify(m.data)}</div>
+                    <div>Metadata: {JSON.stringify(m.metadata)}</div>
                     <div>CreatedAt: {m.createdAt.toLocaleString()}</div>
                     {!!m.updatedAt && <div style={{ color: 'green' }}>UpdatedAt: {m.updatedAt.toLocaleString()}</div>}
                     {!!m.deletedAt && <div style={{ color: 'red' }}>DeletedAt: {m.deletedAt.toLocaleString()}</div>}
                     <div>Participants: {m.participants.join(', ')}</div>
+                    {!m.deletedAt && <div>
+                        <input type='checkbox' id={'reply-' + m.id} data-id={m.id} checked={reply.has(m.id!)} onChange={handleChangeReply} />
+                        <label htmlFor={'reply-' + m.id}>Reply To</label>
+                        <input type='checkbox' id={'forward-' + m.id} data-id={m.id} checked={forward.has(m.id!)} onChange={handleChangeForward} />
+                        <label htmlFor={'forward-' + m.id}>Forward</label>
+                    </div>}
                     {!m.deletedAt && m.fromId === user.name && <>
                         <button data-id={m.id} disabled={updating.has(m.id)} onClick={handleClickMessageDelete}>Delete</button>
                         <input type='checkbox' id={'update-' + m.id} data-id={m.id} checked={update.has(m.id)} disabled={updating.has(m.id)} onChange={handleChangeUpdate} />

@@ -8,7 +8,7 @@ import WatchingConversations from './watch'
 import { Connect, Close } from './connect'
 import { createConversation, createMessage } from './responses'
 
-import type { MessageType, TextMessage, FileMessage } from './messages'
+import type { MessageType, TextMessage, FileMessage, MessageMetadata } from './messages'
 import type { ConversationData } from './conversation'
 import type { ConversationsData } from './conversations'
 import type { User } from './userContext'
@@ -109,9 +109,9 @@ const App = () => {
         )
     }, [wsInstance])
 
-    const send = useCallback((type: MessageType, data: FileMessage | TextMessage) => {
+    const send = useCallback((type: MessageType, data: FileMessage | TextMessage, metadata?: MessageMetadata) => {
         wsInstance?.send(
-            JSON.stringify({ type, data })
+            JSON.stringify({ type, data, metadata })
         )
     }, [wsInstance])
 

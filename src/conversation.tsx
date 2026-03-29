@@ -42,12 +42,14 @@ const ConversationInfo = (props: ConversationInfoProps) => {
 
     const handleClickClose = (e: React.MouseEvent) => {
         setUpdating(true)
-        props.onClose(e.currentTarget.getAttribute('data-id')!)
+        const id = (e.currentTarget as HTMLElement).dataset.id!
+        props.onClose(id)
     }
 
     const handleClickDelete = (e: React.MouseEvent) => {
         setUpdating(true)
-        props.onDelete(e.currentTarget.getAttribute('data-id')!)
+        const id = (e.currentTarget as HTMLElement).dataset.id!
+        props.onDelete(id)
     }
 
     const handleClickJoin = (e: React.MouseEvent) => {
@@ -55,7 +57,8 @@ const ConversationInfo = (props: ConversationInfoProps) => {
             return
         }
         setUpdating(true)
-        props.onJoin(e.currentTarget.getAttribute('data-id')!)
+        const id = (e.currentTarget as HTMLElement).dataset.id!
+        props.onJoin(id)
     }
 
     const participantsText = c.participants?.join(', ')
